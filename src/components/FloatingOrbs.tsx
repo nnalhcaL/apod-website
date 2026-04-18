@@ -12,6 +12,14 @@ const FloatingOrbs: React.FC<FloatingOrbsProps> = ({ mousePos, onOrbClick }) => 
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [idleTimer, setIdleTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [isIdle, setIsIdle] = useState(false);
+  const viewportWidth = typeof window === 'undefined' ? 1440 : window.innerWidth;
+  const isDesktop = viewportWidth >= 1024;
+  const orbScale = viewportWidth >= 1440 ? 0.82 : isDesktop ? 0.88 : 1;
+  const motionScale = viewportWidth >= 1440 ? 0.76 : isDesktop ? 0.86 : 1;
+  const labelMaxWidth = viewportWidth >= 1440 ? 152 : isDesktop ? 160 : viewportWidth >= 640 ? 176 : 148;
+  const labelFontSize = isDesktop ? 12 : 13;
+  const labelLineHeight = isDesktop ? 1.22 : 1.28;
+  const labelNumberFontSize = isDesktop ? 10 : 11;
 
   useEffect(() => {
     if (idleTimer) clearTimeout(idleTimer);
@@ -71,7 +79,8 @@ const FloatingOrbs: React.FC<FloatingOrbsProps> = ({ mousePos, onOrbClick }) => 
         const distToMouse = Math.sqrt(Math.pow(mousePos.x - orbX, 2) + Math.pow(mousePos.y - orbY, 2));
         const proximityGlow = Math.max(0, 1 - distToMouse / 200);
         const duration = 8 + (orb.id % 3) * 3;
-        const range = 30 + (orb.id % 2) * 20;
+        const range = (30 + (orb.id % 2) * 20) * motionScale;
+        const visualSize = orb.size * orbScale;
         const labelAlignmentClass =
           orb.x > 82 ? 'items-end text-right' : orb.x < 18 ? 'items-start text-left' : 'items-center text-center';
 
@@ -103,8 +112,8 @@ const FloatingOrbs: React.FC<FloatingOrbsProps> = ({ mousePos, onOrbClick }) => 
             <motion.div
               className="relative rounded-full"
               style={{
-                width: orb.size,
-                height: orb.size,
+                width: visualSize,
+                height: visualSize,
                 background: 'radial-gradient(circle, #FFF3E0 0%, #FF8A33 60%, transparent 100%)',
                 boxShadow: `0 0 ${20 + proximityGlow * 40}px ${hoveredId === orb.id ? 'rgba(255, 213, 79, 0.8)' : 'rgba(255, 138, 51, 0.4)'}`,
               }}
@@ -131,12 +140,19 @@ const FloatingOrbs: React.FC<FloatingOrbsProps> = ({ mousePos, onOrbClick }) => 
               )}
             </motion.div>
 
-            <div className={`mt-4 flex max-w-[148px] flex-col gap-1 sm:max-w-[176px] ${labelAlignmentClass}`}>
-              <span className="font-sans text-[11px] font-medium leading-none tracking-[0.04em] text-white/45">
+            <div
+              className={`mt-3 flex flex-col gap-1 sm:mt-4 ${labelAlignmentClass}`}
+              style={{ maxWidth: labelMaxWidth }}
+            >
+              <span
+                className="font-sans font-medium leading-none tracking-[0.04em] text-white/45"
+                style={{ fontSize: labelNumberFontSize }}
+              >
                 {orb.id}.
               </span>
               <motion.span
-                className="relative block text-balance font-sans text-[13px] font-medium leading-[1.28] tracking-[0.01em]"
+                className="relative block text-balance font-sans font-medium tracking-[0.01em]"
+                style={{ fontSize: labelFontSize, lineHeight: labelLineHeight }}
                 animate={{
                   color: hoveredId === orb.id ? '#FFFFFF' : 'rgba(255, 255, 255, 0.76)',
                 }}
