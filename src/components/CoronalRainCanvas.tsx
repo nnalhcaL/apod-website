@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { getSunArcLayout } from '../utils/sunArcLayout';
 
 interface TrailPoint {
   x: number;
@@ -29,11 +30,10 @@ interface CoronalRainCanvasProps {
   mousePos: { x: number; y: number };
 }
 
-const SUN_RADIUS = 450;
-const SUN_CENTER_OFFSET_Y = 180;
+const BASE_SUN_RADIUS = 450;
 const ARC_START = Math.PI + 0.411;
 const ARC_END = 2 * Math.PI - 0.411;
-const ACTIVATION_BAND = 140;
+const ACTIVATION_BAND_RATIO = 140 / BASE_SUN_RADIUS;
 
 const AMBIENT_EMISSION_RATE = 9.1;
 const HOTSPOT_EXTRA_EMISSION_RATE = 15.2;
@@ -81,19 +81,25 @@ const normalizeTheta = (theta: number) => {
 
 const isVisibleArcTheta = (theta: number) => theta >= ARC_START && theta <= ARC_END;
 
-const getPosOnArc = (theta: number, width: number, height: number) => {
+const getPosOnArc = (
+  theta: number,
+  width: number,
+  height: number,
+  radius: number,
+  centerOffsetY: number,
+) => {
   const centerX = width / 2;
-  const centerY = height + SUN_CENTER_OFFSET_Y;
+  const centerY = height + centerOffsetY;
 
   return {
-    x: centerX + SUN_RADIUS * Math.cos(theta),
-    y: centerY + SUN_RADIUS * Math.sin(theta),
+    x: centerX + radius * Math.cos(theta),
+    y: centerY + radius * Math.sin(theta),
   };
 };
 
 const easeInOutSine = (progress: number) => -(Math.cos(Math.PI * progress) - 1) / 2;
 
-const createParticle = (hotSpotTheta: number | null): Particle => {
+const createParticle = (hotSpotTheta: number | null, sizeScale: number): Particle => {
   const isHotspot =
     hotSpotTheta !== null && Math.random() < HOTSPOT_DIRECTIONAL_WEIGHT;
   const loopSpan = isHotspot
@@ -115,8 +121,8 @@ const createParticle = (hotSpotTheta: number | null): Particle => {
     thetaStart: loopCenter - halfSpan,
     thetaEnd: loopCenter + halfSpan,
     apexHeight: isHotspot
-      ? randomRange(HOTSPOT_APEX_MIN, HOTSPOT_APEX_MAX)
-      : randomRange(AMBIENT_APEX_MIN, AMBIENT_APEX_MAX),
+      ? randomRange(HOTSPOT_APEX_MIN, HOTSPOT_APEX_MAX) * sizeScale
+      : randomRange(AMBIENT_APEX_MIN, AMBIENT_APEX_MAX) * sizeScale,
     progress: 0,
     duration: isHotspot
       ? randomRange(HOTSPOT_DURATION_MIN, HOTSPOT_DURATION_MAX)
@@ -134,7 +140,7 @@ const createParticle = (hotSpotTheta: number | null): Particle => {
     isHotspot,
     trail: [],
     trailBudget: Math.round(isHotspot ? randomRange(18, 24) : randomRange(12, 16)),
-    wobbleAmplitude: randomRange(WOBBLE_MIN, WOBBLE_MAX),
+    wobbleAmplitude: randomRange(WOBBLE_MIN, WOBBLE_MAX) * sizeScale,
     wobbleFrequency: randomRange(0.5, 1),
     wobblePhase: randomRange(0, Math.PI * 2),
   };
@@ -144,13 +150,16 @@ const getHotSpotTheta = (
   mousePos: { x: number; y: number },
   width: number,
   height: number,
+  radius: number,
+  centerOffsetY: number,
+  activationBand: number,
 ) => {
   if (mousePos.x === -1 || mousePos.y === -1) {
     return null;
   }
 
   const centerX = width / 2;
-  const centerY = height + SUN_CENTER_OFFSET_Y;
+  const centerY = height + centerOffsetY;
   const dx = mousePos.x - centerX;
   const dy = mousePos.y - centerY;
   const dist = Math.sqrt(dx * dx + dy * dy);
@@ -160,7 +169,7 @@ const getHotSpotTheta = (
     return null;
   }
 
-  if (Math.abs(dist - SUN_RADIUS) > ACTIVATION_BAND) {
+  if (Math.abs(dist - radius) > activationBand) {
     return null;
   }
 
@@ -215,7 +224,17 @@ const CoronalRainCanvas: React.FC<CoronalRainCanvasProps> = ({ mousePos }) => {
       lastTimestampRef.current = timestamp;
 
       const { width, height } = canvas;
-      const hotSpotTheta = getHotSpotTheta(mousePosRef.current, width, height);
+      const sunArcLayout = getSunArcLayout(width);
+      const sizeScale = sunArcLayout.radius / BASE_SUN_RADIUS;
+      const activationBand = sunArcLayout.radius * ACTIVATION_BAND_RATIO;
+      const hotSpotTheta = getHotSpotTheta(
+        mousePosRef.current,
+        width,
+        height,
+        sunArcLayout.radius,
+        sunArcLayout.centerOffsetY,
+        activationBand,
+      );
       const emissionRate =
         AMBIENT_EMISSION_RATE +
         (hotSpotTheta === null ? 0 : HOTSPOT_EXTRA_EMISSION_RATE);
@@ -230,7 +249,7 @@ const CoronalRainCanvas: React.FC<CoronalRainCanvasProps> = ({ mousePos }) => {
         emissionCarryRef.current >= 1 &&
         particlesRef.current.length < activeCap
       ) {
-        particlesRef.current.push(createParticle(hotSpotTheta));
+        particlesRef.current.push(createParticle(hotSpotTheta, sizeScale));
         emissionCarryRef.current -= 1;
       }
 
@@ -259,7 +278,13 @@ const CoronalRainCanvas: React.FC<CoronalRainCanvasProps> = ({ mousePos }) => {
           ARC_START,
           ARC_END,
         );
-        const basePos = getPosOnArc(currentTheta, width, height);
+        const basePos = getPosOnArc(
+          currentTheta,
+          width,
+          height,
+          sunArcLayout.radius,
+          sunArcLayout.centerOffsetY,
+        );
         const arcOffset = Math.sin(Math.PI * easedProgress) * particle.apexHeight;
         const radialX = Math.cos(currentTheta);
         const radialY = Math.sin(currentTheta);

@@ -6,6 +6,7 @@ import FloatingOrbs from './components/FloatingOrbs';
 import StarField from './components/StarField';
 import { REPORT_ORBS } from './content/reportOrbs';
 import { OrbData } from './types';
+import { getSunArcLayout } from './utils/sunArcLayout';
 
 const DEFAULT_VOLUME = 0.5;
 const BACKGROUND_AUDIO_SRC = new URL('../spaceMusic.mp3', import.meta.url).href;
@@ -61,10 +62,14 @@ export default function App() {
   const modalBodyRef = useRef<HTMLDivElement | null>(null);
   const [mousePos, setMousePos] = useState({ x: -1, y: -1 });
   const [selectedOrb, setSelectedOrb] = useState<OrbData | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === 'undefined' ? 1440 : window.innerWidth,
+  );
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
   const [isPlaying, setIsPlaying] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const sunArcLayout = getSunArcLayout(viewportWidth);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -72,6 +77,15 @@ export default function App() {
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -315,12 +329,17 @@ export default function App() {
       <FloatingOrbs mousePos={mousePos} onOrbClick={setSelectedOrb} />
 
       {/* Sun Arc */}
-      <div className="fixed bottom-[-520px] left-1/2 -translate-x-1/2 z-20 pointer-events-none sm:bottom-[-570px] lg:bottom-[-630px] xl:bottom-[-670px]">
-        <div 
-          className="relative h-[720px] w-[720px] rounded-full sm:h-[780px] sm:w-[780px] lg:h-[820px] lg:w-[820px] xl:h-[860px] xl:w-[860px]"
+      <div
+        className="fixed left-1/2 z-20 -translate-x-1/2 pointer-events-none"
+        style={{ bottom: `${sunArcLayout.bottomOffset}px` }}
+      >
+        <div
+          className="relative rounded-full"
           style={{
+            height: `${sunArcLayout.diameter}px`,
             background: 'radial-gradient(circle, #FFE5A0 0%, #FFA726 30%, #E65100 60%, rgba(230, 81, 0, 0.3) 80%, transparent 100%)',
             boxShadow: '0 0 150px rgba(255, 140, 40, 0.5)',
+            width: `${sunArcLayout.diameter}px`,
           }}
         >
           {/* Plasma Flare Tendrils */}
