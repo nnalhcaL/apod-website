@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter", "Helvetica Neue", Arial, sans-serif;
+
+  --color-sun-core: #FFE5A0;
+  --color-sun-mid: #FFA726;
+  --color-sun-edge: #E65100;
+  --color-accent-orange: #FF8A33;
+  --color-accent-gold: #FFD54F;
+}
+
+@layer base {
+  body {
+    @apply bg-black text-white antialiased overflow-x-hidden;
+    font-family: var(--font-sans);
+  }
+}
+
+.glass-modal {
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid #FF8A33;
+  border-radius: 12px;
+}
+
+.text-glow {
+  text-shadow: 0 0 40px rgba(255, 140, 40, 0.4);
+}
